@@ -1,7 +1,9 @@
 using Flux
 using ArgParse
+using Statistics
 
 include("utils/utils.jl")
+include("models.jl")
 
 function parse_commandline()
     s = ArgParseSettings()
@@ -83,10 +85,40 @@ function main()
     println("* Loading dataset: $(args["dataset"])")
     println("* Loading model: $(model_name)")
     println("      BatchNorm: $(!args["no-batchnorm"])")
-
+    
     if lowercase(args["model"]) == "feedforward"
-        @time trainloader, testloader = Utils.load_dataset(args["dataset"], args["batch-size"], false)
+        @time trainloader, testloader, n_inputs = Utils.load_dataset(args["dataset"], args["batch-size"], false)
+        @time model = Models.FFNet(n_inputs, args["n-hiddens"], n_hidden_layers=args["n-hidden-layers"], 
+                batchnorm=!args["no-batchnorm"], bias=true) |> gpu
+    elseif lowercase(args["model"]) == "lenet"
+        # Fill up LeNet
     end
+
+    # Multi-GPU?
+
+    loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
+    optimiser = Flux.Optimise.ADAM(args["lr"])
+
+    # Train, IG
+    for epoch in 1:args["epochs"]
+        println("Training on epoch $epoch ...")
+        for (batchidx, (x, y)) in enumerate(trainloader)
+            gs = gradient(params(model)) do 
+                loss((x, y)) 
+            end
+            Flux.Optimise.update!(optimiser, params(model), gs)
+            if (batchidx - 1) % args["log-interval"] == 0
+                l, acc = Models.test(model, testloader)
+                println("Epoch $epoch, Minibatch $batchidx: loss = $l, accuracy = $acc")
+            end
+        end
+        # optimiser.eta -= args["lr-decay"]
+    end
+    # function print_acc()
+    #     loss = Models.test(model, testloader)
+    #     println(loss)
+    # end
+    # Flux.Optimise.@epochs args["epochs"] Flux.train!(loss, params(model), trainloader, optimiser, cb=print_acc)
 end
 
 main()

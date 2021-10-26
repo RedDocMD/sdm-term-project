@@ -25,6 +25,7 @@ function load_dataset(namedataset="mnist", batch_size=200, data_aug=false, conv_
 
         train_loader = DataLoader((data=train_x, label=train_y), batchsize=Int64(batch_size), shuffle=true)
         test_loader = DataLoader((data=test_x, label=test_y), batchsize=200, shuffle=true)
+        n_inputs = 28 * 28
     elseif namedataset == "cifar10"
         train_x, train_y = CIFAR10.traindata(Float32)
         test_x, test_y = CIFAR10.testdata(Float32)
@@ -55,11 +56,12 @@ function load_dataset(namedataset="mnist", batch_size=200, data_aug=false, conv_
         test_x = test_x |> gpu
         test_y = test_y |> gpu
 
-        train_loader = DataLoader((data=train_x, label=train_y), batchsize=Int64(batch_size), shuffle=true)
-        test_loader = DataLoader((data=test_x, label=test_y), batchsize=200, shuffle=true)
+        train_loader = DataLoader(train_x, train_y, batchsize=Int64(batch_size), shuffle=true)
+        test_loader = DataLoader(test_x, test_y, batchsize=200, shuffle=true)
+        n_inputs = 3 * 32 * 32
     end
 
-    return train_loader, test_loader
+    return train_loader, test_loader, Int32(n_inputs)
 end
 
 function normalize!(inp_tensor, means, deviations)
