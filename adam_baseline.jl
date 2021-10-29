@@ -3,6 +3,8 @@ using ArgParse
 using Statistics
 import Printf: @sprintf
 import ParameterSchedulers: Stateful, Step, next!
+import Serialization: serialize
+import Base.Filesystem: pwd, joinpath
 
 include("utils/utils.jl")
 include("models.jl")
@@ -136,6 +138,9 @@ function main()
 
     println("\n - Training performance after each epoch: $(perf.tr)")
     println(" - Test performance after each epoch: $(perf.te)")
+
+    out_path = joinpath(pwd(), "outputs", file_name)
+    serialize(out_path, perf)
 end
 
 main()
