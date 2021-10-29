@@ -1,6 +1,7 @@
 using Flux
 using ArgParse
 using Statistics
+using Printf
 
 include("utils/utils.jl")
 include("models.jl")
@@ -99,21 +100,40 @@ function main()
     loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
     optimiser = Flux.Optimise.ADAM(args[:lr])
 
+    perf = Utils.Performance()
+
     # Train, IG
     for epoch in 1:args[:epochs]
-        println("Training on epoch $epoch ...")
+        println("\nEpoch $epoch of $(args[:epochs])")
         for (batchidx, (x, y)) in enumerate(trainloader)
+            train_loss = loss((x, y))
+
             gs = gradient(params(model)) do 
                 loss((x, y)) 
             end
             Flux.Optimise.update!(optimiser, params(model), gs)
+
+            if epoch == 1 && args[:log_first_epoch]
+                push!(perf.first_epoch, Models.test(model, testloader, label=" - Test"))
+            end
+
             if (batchidx - 1) % args[:log_interval] == 0
-                l, acc = Models.test(model, testloader)
-                println("Epoch $epoch, Minibatch $batchidx: loss = $l, accuracy = $acc")
+                train_loss_str = @sprintf "%.6f" train_loss
+                println(" Train Epoch $epoch, Minibatch $batchidx: Train-loss = $train_loss_str")
+            end
+
+            if args[:save_interval] > 0 && (batchidx - 1) % args[:save_interval] == 0 && batchidx > 1
+                acc = Models.test(model, test_loader, label=" - Test")
+                push!(perf.te_vs_iter, acc)
             end
         end
         # optimiser.eta -= args["lr-decay"]
+        push!(perf.tr, Models.test(model, trainloader, label="Training"))
+        push!(perf.te, Models.test(model, testloader, label="Test"))
     end
+
+    println("\n - Training performance after each epoch: $(perf.tr)")
+    println(" - Test performance after each epoch: $(perf.te)")
 end
 
 main()

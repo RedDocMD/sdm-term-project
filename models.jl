@@ -2,6 +2,7 @@ module Models
 
 import Flux
 using Flux: cpu
+using Printf
 
 function LinMod(n_inputs, n_outputs; bias=false, batchnorm=false)
     layers::Vector{Any} = [Flux.Dense(n_inputs, n_outputs, bias=bias)]
@@ -21,7 +22,7 @@ function FFNet(n_inputs, n_hiddens; n_hidden_layers=Int32(2), n_outputs=Int32(10
     return Flux.Chain(layers...)
 end
 
-function test(model, data_loader, criterion=Flux.Losses.logitcrossentropy, label="")
+function test(model, data_loader; criterion=Flux.Losses.logitcrossentropy, label="")
     test_loss, correct = 0.0, 0
     no_mini_batches = 0
     no_datapoints = 0
@@ -35,7 +36,12 @@ function test(model, data_loader, criterion=Flux.Losses.logitcrossentropy, label
     end
     avg_test_loss = test_loss / no_mini_batches
     accuracy = Float32(correct) / no_datapoints
-    return avg_test_loss, accuracy
+    if length(label) > 0
+        loss_str = @sprintf "%.4f" avg_test_loss
+        acc_str = @sprintf "%.2f" 100.0 * accuracy
+        println("$label: Average loss: $loss_str, Accuracy: $correct/$no_datapoints ($acc_str%)")
+    end
+    return accuracy
 end
 
 end
