@@ -1,7 +1,8 @@
 using Flux
 using ArgParse
 using Statistics
-using Printf
+import Printf: @sprintf
+import ParameterSchedulers: Stateful, Step, next!
 
 include("utils/utils.jl")
 include("models.jl")
@@ -99,12 +100,14 @@ function main()
 
     loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
     optimiser = Flux.Optimise.ADAM(args[:lr])
+    lr_sched = Stateful(Step(args[:lr], args[:lr_decay], 1))
 
     perf = Utils.Performance()
 
     # Train, IG
     for epoch in 1:args[:epochs]
         println("\nEpoch $epoch of $(args[:epochs])")
+        optimiser.eta = next!(lr_sched)
         for (batchidx, (x, y)) in enumerate(trainloader)
             train_loss = loss((x, y))
 
@@ -127,7 +130,6 @@ function main()
                 push!(perf.te_vs_iter, acc)
             end
         end
-        # optimiser.eta -= args["lr-decay"]
         push!(perf.tr, Models.test(model, trainloader, label="Training"))
         push!(perf.te, Models.test(model, testloader, label="Test"))
     end
