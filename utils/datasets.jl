@@ -56,8 +56,8 @@ function load_dataset(namedataset="mnist", batch_size=200, data_aug=false, conv_
         test_x = test_x |> gpu
         test_y = test_y |> gpu
 
-        train_loader = DataLoader(train_x, train_y, batchsize=Int64(batch_size), shuffle=true)
-        test_loader = DataLoader(test_x, test_y, batchsize=200, shuffle=true)
+        train_loader = DataLoader((data=train_x, label=train_y), batchsize=Int64(batch_size), shuffle=true)
+        test_loader = DataLoader((data=test_x, label=test_y), batchsize=200, shuffle=true)
         n_inputs = 3 * 32 * 32
     end
 
@@ -71,11 +71,9 @@ function normalize!(inp_tensor, means, deviations)
             inp_tensor[:, :, ch, :] = broadcast(-, inp_tensor[:, :, ch, :], means[ch])
             inp_tensor[:, :, ch, :] = broadcast(/, inp_tensor[:, :, ch, :], deviations[ch])
         end
-        inp_tensor
     else
         broadcast!(-, inp_tensor, inp_tensor, means)
         broadcast!(/, inp_tensor, inp_tensor, deviations)
-        inp_tensor
     end
 end
 
