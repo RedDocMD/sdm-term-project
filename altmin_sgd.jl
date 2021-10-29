@@ -8,11 +8,11 @@ function parse_commandline()
             help = "name of model: \"feedforward\", \"binary\" or \"LeNet\""
             arg_type = String
             default = "feedforward"
-        "--n-hidden-layers"
+        "--n_hidden_layers"
             help = "number of hidden layers (ignored for LeNet)"
             arg_type = Int32
             default = Int32(2)
-        "--n-hiddens"
+        "--n_hiddens"
             help = "number of hidden units (ignored for LeNet)"
             arg_type = Int32
             default = Int32(100)
@@ -20,10 +20,10 @@ function parse_commandline()
             help = "name of dataset"
             arg_type = String
             default = "mnist"
-        "--data-augmentation"
+        "--data_augmentation"
             help = "enables data augmentation"
             action = :store_true
-        "--batch-size"
+        "--batch_size"
             help = "input batch size for training"
             arg_type = Int32
             default = Int32(200)
@@ -31,38 +31,38 @@ function parse_commandline()
             help = "number of epochs to train for"
             arg_type = Int32
             default = Int32(50)
-        "--n-iter-codes"
+        "--n_iter_codes"
             help = "number of internal iterations for codes optimization"
         arg_type = Int32
             default = Int32(5)
-        "--n-iter-weights"
+        "--n_iter_weights"
             help = "number of internal iterations for learning weights"
             arg_type = Int32
             default = Int32(1)
-        "--lr-codes"
+        "--lr_codes"
             help = "learning rate for codes update"
             arg_type = Float32
             default = Float32(0.3)
-        "--lr-out"
+        "--lr_out"
             help = "learning rate for last layer weights updates"
             arg_type = Float32
             default = Float32(0.008)
-        "--lr-weights"
+        "--lr_weights"
             help = "learning rate for hidden weights updates"
             arg_type = Float32
             default = Float32(0.008)
-        "--lr-half-epochs"
+        "--lr_half_epochs"
             help = "number of epochs after which learning rate is halved"
             arg_type = Int32
             default = Int32(8)
-        "--no-batchnorm"
+        "--no_batchnorm"
             help = "disables batch-normalisation"
             action = :store_true
-        "--lambda-c"
+        "--lambda_c"
             help = "codes sparsity"
             arg_type = Float32
             default = Float32(0)
-        "--lambda-w"
+        "--lambda_w"
             help = "weight sparsity"
             arg_type = Float32
             default = Float32(0.0)
@@ -70,11 +70,11 @@ function parse_commandline()
             help = "initial mu parameter"
             arg_type = Float32
             default = Float32(0.003)
-        "--d-mu"
+        "--d_mu"
             help = "increase in mu after every mini-batch"
             arg_type = Float32
             default = Float32(1 / 300)
-        "--postprocessing-steps"
+        "--postprocessing_steps"
             help = "number of Carreirs-Peripinan post-processing steps after training"
             arg_type = Int32
             default = Int32(0)
@@ -82,27 +82,28 @@ function parse_commandline()
             help = "random seed"
             arg_type = Int32
             default = Int32(1)
-        "--log-interval"
+        "--log_interval"
             help = "how many batches to wait before logging training status"
             arg_type = Int32
             default = Int32(100)
-        "--save-interval"
+        "--save_interval"
             help = "how many batches to wait before saving test performance (if set to zero, it does not save)"
             arg_type = Int32
             default = Int32(1000)
-        "--log-first-epoch"
+        "--log_first_epoch"
             help = "whether or not it should test and log after every mini-batch in first epoch"
             action = :store_true
-        "--no-cuda"
+        "--no_cuda"
             help = "disables CUDA training"
             action = :store_true
     end
 
-    return parse_args(s)
+    return parse_args(s, as_symbols=true)
 end
+
+function main()
+    args = parse_commandline()
+end
+
+main()
     
-parsed_args = parse_commandline()
-println("Parsed args:")
-for (arg, val) in parsed_args
-    println("  $arg => $val")
-end
