@@ -46,7 +46,7 @@ function LeNet(;num_input_channels=3, num_classes=10, window_size=32, bias=true)
         relu,
         Flux.MaxPool((2, 2))
     ) |> gpu
-    inp_size = (((window_size - 4) ÷ 2 - 4) ÷ 2) ^ 2
+    inp_size = 16 * (((window_size - 4) ÷ 2 - 4) ÷ 2) ^ 2
     classifier = Flux.Chain(
         Flux.Dense(inp_size, 120, bias=bias),
         relu,
@@ -57,8 +57,18 @@ function LeNet(;num_input_channels=3, num_classes=10, window_size=32, bias=true)
     return LeNet(features, classifier)
 end
 
+function linearize_tensor(tensor)
+    dims = size(tensor)
+    compressed_len = reduce(*, dims[1:ndims(tensor)-1]; init=1)
+    reshape(tensor, (compressed_len, size(tensor, ndims(tensor))))
+end
+
 Flux.@functor LeNet
-(m::LeNet)(x) = m.classifier(m.features(x))
+function (m::LeNet)(x) 
+    interm = m.features(x)
+    interm = linearize_tensor(interm)
+    return m.classifier(interm)
+end
 
 function test(model, data_loader; criterion=Flux.Losses.logitcrossentropy, label="")
     test_loss, correct = 0.0, 0
