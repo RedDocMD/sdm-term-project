@@ -1,7 +1,7 @@
 using MLDatasets
 using Flux: gpu, DataLoader, onehotbatch
 
-function load_dataset(namedataset="mnist", batch_size=200, data_aug=false, conv_net=false, has_gpu=true)
+function load_dataset(;namedataset="mnist", batch_size=200, data_aug=false, conv_net=false, has_gpu=true)
     if namedataset == "mnist"
         train_x, train_y = MNIST.traindata(Float32)
         test_x, test_y = MNIST.testdata(Float32)
@@ -14,6 +14,9 @@ function load_dataset(namedataset="mnist", batch_size=200, data_aug=false, conv_
         if !conv_net
             train_x = linearize_tensor(train_x)
             test_x = linearize_tensor(test_x)
+        else
+            train_x = add_channel_dim(train_x)
+            test_x = add_channel_dim(test_x)
         end
 
         train_y, test_y = onehotbatch(train_y, 0:9), onehotbatch(test_y, 0:9)
@@ -96,3 +99,5 @@ function random_horizontal_flip!(tensor, prob=Float32(0.5))
         reverse!(tensor; dims=2)
     end
 end
+
+add_channel_dim(tensor) = reshape(tensor, (size(tensor, 1), size(tensor, 2), 1, size(tensor, 3)))
