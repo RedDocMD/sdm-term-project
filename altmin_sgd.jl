@@ -1,6 +1,10 @@
 using Flux
 using ArgParse
 
+include("utils/utils.jl")
+include("models.jl")
+include("altmin.jl")
+
 function parse_commandline()
     s = ArgParseSettings()
     @add_arg_table! s begin
@@ -103,6 +107,31 @@ end
 
 function main()
     args = parse_commandline()
+
+    model_name = lowercase(args[:model])
+    if model_name == "feedforward" || model_name == "binary"
+        model_name = "$(model_name)_$(args[:n_hidden_layers])x$(args[:n_hiddens])"
+    end
+    file_name = "save_adam_baseline_$(model_name)_$(args[:dataset])_$(args[:seed]).pt"
+    
+    println("\nOnline alternating-minimization with SGD")
+    println("* Loading dataset: $(args[:dataset])")
+    println("* Loading model: $(model_name)")
+    println("      BatchNorm: $(!args[:no_batchnorm])")
+
+    if lowercase(args[:model]) == "feedforward" || lowercase(args[:model]) == "binary"
+        trainloader, testloader, n_inputs = Utils.load_dataset(args[:dataset], args[:batch_size], false)
+        model = Models.FFNet(n_inputs, args[:n_hiddens], n_hidden_layers=args[:n_hidden_layers], 
+                batchnorm=!args[:no_batchnorm], bias=true) |> gpu
+    elseif lowercase(args[:model]) == "lenet"
+        # Fill up LeNet
+    end
+
+    loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
+
+    # Multi-GPU?
+
+    # get_mods
 end
 
 main()
