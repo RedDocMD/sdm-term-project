@@ -4,40 +4,51 @@ import Flux
 using Flux: cpu, gpu
 using Printf
 
+struct LinMod{C}
+    classifier::C
+end
+
 function LinMod(n_inputs, n_outputs; bias=false, batchnorm=false)
     layers::Vector{Any} = [Flux.Dense(n_inputs, n_outputs, bias=bias)]
     if batchnorm
         push!(layers, Flux.BatchNorm(Int(n_outputs)))
     end
-    return Flux.Chain(layers...) |> gpu
+    return LinMod(Flux.Chain(layers...) |> gpu)
 end
 
-struct FFNet{L, F}
-    features::F
-    layers::L
+Flux.@functor LinMod
+(m::LinMod)(x) = m.classifier(x)
+
+struct FFNet{C}
+    features_vec::Vector{Any}
+    classifier_vec::Vector{Any}
+    classifier::C
 end
 
 function FFNet(;n_inputs, n_hiddens, n_hidden_layers=Int32(2), n_outputs=Int32(10), nlin=Flux.relu, bias=false, batchnorm=false)
     nlin_arr(x) = nlin.(x)
-    layers = [LinMod(n_inputs, n_hiddens, bias=bias, batchnorm=batchnorm), nlin_arr]
+    layers::Vector{Any} = [LinMod(n_inputs, n_hiddens, bias=bias, batchnorm=batchnorm), nlin_arr]
     for i = 1:n_hidden_layers
         push!(layers, LinMod(n_hiddens, n_hiddens, bias=bias, batchnorm=batchnorm), nlin_arr)
     end
     push!(layers, Flux.Dense(n_hiddens, n_outputs))
-    return FFNet(Flux.Chain() |> gpu, Flux.Chain(layers...) |> gpu)
+    return FFNet([], layers, Flux.Chain(layers...) |> gpu)
 end
 
 Flux.@functor FFNet
-(m::FFNet)(x) = m.layers(x)
+(m::FFNet)(x) = m.classifier(x)
 
 struct LeNet{F, C}
+    features_vec::Vector{Any}
+    classifier_vec::Vector{Any}
     features::F
     classifier::C
 end
 
 function LeNet(;num_input_channels=3, num_classes=10, window_size=32, bias=true)
     relu(x) = Flux.relu.(x)
-    features = Flux.Chain(
+
+    features_vec::Vector{Any} = [
         Flux.Conv((5, 5), num_input_channels => 6; bias=bias),
         relu,
         Flux.MaxPool((2, 2)),
@@ -45,16 +56,20 @@ function LeNet(;num_input_channels=3, num_classes=10, window_size=32, bias=true)
         Flux.Conv((5, 5), 6 => 16, bias=bias),
         relu,
         Flux.MaxPool((2, 2))
-    ) |> gpu
+    ]
+    features = Flux.Chain(features_vec...) |> gpu
+
     inp_size = 16 * (((window_size - 4) ÷ 2 - 4) ÷ 2) ^ 2
-    classifier = Flux.Chain(
+    classifier_vec::Vector{Any} = [
         Flux.Dense(inp_size, 120, bias=bias),
         relu,
         Flux.Dense(120, 84, bias=bias),
         relu,
         Flux.Dense(84, num_classes, bias=bias)
-    ) |> gpu
-    return LeNet(features, classifier)
+    ]
+    classifier = Flux.Chain(classifier_vec...) |> gpu
+
+    return LeNet(features_vec, classifier_vec, features, classifier)
 end
 
 function linearize_tensor(tensor)

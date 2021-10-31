@@ -120,16 +120,30 @@ function main()
     println("      BatchNorm: $(!args[:no_batchnorm])")
 
     if lowercase(args[:model]) == "feedforward" || lowercase(args[:model]) == "binary"
-        trainloader, testloader, n_inputs = Utils.load_dataset(args[:dataset], args[:batch_size], false)
-        model = Models.FFNet(n_inputs, args[:n_hiddens], n_hidden_layers=args[:n_hidden_layers], 
-                batchnorm=!args[:no_batchnorm], bias=true) |> gpu
+        trainloader, testloader, n_inputs = Utils.load_dataset(;namedataset=args[:dataset], batch_size=args[:batch_size])
+        model = Models.FFNet(n_inputs=n_inputs, n_hiddens=args[:n_hiddens], n_hidden_layers=args[:n_hidden_layers],
+                batchnorm=!args[:no_batchnorm], bias=true)
     elseif lowercase(args[:model]) == "lenet"
-        # Fill up LeNet
+        trainloader, testloader, n_inputs = Utils.load_dataset(;namedataset=args[:dataset], batch_size=args[:batch_size], 
+            conv_net=true, data_aug=args[:data_augmentation])
+        if args[:data_augmentation]
+            println("    data augmentation")
+        end
+
+        first_data = first(trainloader).data
+        window_size = size(first_data, 1)
+        if ndims(first_data) == 3
+            num_input_channels = size(first_data, 3)
+        else
+            num_input_channels = 1
+        end
+
+        model = Models.LeNet(;num_input_channels=num_input_channels, window_size=window_size, bias=true)
     end
 
-    loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
-
     # Multi-GPU?
+
+    loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
 
     # get_mods
 end
