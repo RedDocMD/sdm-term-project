@@ -1,5 +1,6 @@
 using Flux
 using ArgParse
+using Printf: @printf
 
 include("utils/utils.jl")
 include("models.jl")
@@ -149,6 +150,25 @@ function main()
 
     model = Altmin.get_mods(model, optimizer, scheduler)
     # Last layer params?
+
+    # Specially handle binary model?
+
+    # Initial mu and increment after every mini-batch
+    mu = args[:mu]
+    mu_max = 10 * args[:mu]
+
+    for epoch = 1:args[:epochs]
+        @printf "Epoch %d of %d, μ = %.4f, lr_out = %f\n" epoch args[:epochs] mu scheduler(epoch)
+        for (batchidx, (x, y)) in enumerate(trainloader)
+            # (1) Forward
+            gs = gradient(params(model)) do 
+                loss((x, y)) 
+            end
+            Flux.Optimise.update!(optimizer, params(model), gs)
+
+            # (2) Update codes
+        end
+    end
 end
 
 main()

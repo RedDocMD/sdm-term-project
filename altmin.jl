@@ -4,6 +4,7 @@ include("models.jl")
 
 import Flux
 using Statistics: mean
+using Flux: gpu
 
 function compute_code_loss(codes, nmod, lin, loss_fn, codes_target, mu, lambda_c)
     output = lin(nmod(codes))
@@ -27,6 +28,9 @@ struct AltMinModel{C}
     model::C
     n_inputs::Union{Int32, Nothing}
 end
+
+Flux.@functor AltMinModel
+(m::AltMinModel)(x) = m.model(x)
 
 function get_mods(model, optimizer, scheduler)
     mark_code_mods(model)
@@ -76,7 +80,7 @@ function get_mods(model, optimizer, scheduler)
     else
         n_inputs = nothing::Union{Int32, Nothing}
     end
-    return AltMinModel(Flux.Chain(model_mods...), n_inputs)
+    return AltMinModel(Flux.Chain(model_mods...) |> gpu, n_inputs)
 end
 
 function insert_mod(model_mods, mods, has_codes)
