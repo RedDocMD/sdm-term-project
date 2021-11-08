@@ -144,8 +144,11 @@ function main()
     # Multi-GPU?
 
     loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
+    optimizer = Flux.Optimise.ADAM(args[:lr_weights])
+    scheduler(epoch) = args[:lr_weights] / 2^(epoch ÷ args[:lr_half_epochs])
 
-    # get_mods
+    model = Altmin.get_mods(model, optimizer, scheduler)
+    # Last layer params?
 end
 
 main()

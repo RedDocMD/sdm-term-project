@@ -5,36 +5,42 @@ using Flux: cpu, gpu
 using Printf
 using CUDA
 
-struct DenseMod{C}
+mutable struct DenseMod{C}
     classifier::C
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
 DenseMod(n_inputs, n_outputs, bias=true) = DenseMod(
     Flux.Dense(n_inputs, n_outputs, bias=bias),
-    nothing
+    nothing, nothing, nothing
 )
 
 Flux.@functor DenseMod
 (m::DenseMod)(x) = m.classifier(x)
 
-struct BatchNormMod{C}
+mutable struct BatchNormMod{C}
     classifier::C
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
 BatchNormMod(n_outputs) = BatchNormMod(
     Flux.BatchNorm(Int(n_outputs)),
-    nothing
+    nothing, nothing, nothing
 )
 
 Flux.@functor BatchNormMod
 (m::BatchNormMod)(x) = m.classifier(x)
 
-struct LinMod{C}
+mutable struct LinMod{C}
     classifier::C
     n_inputs::Int32
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
 function LinMod(n_inputs, n_outputs; bias=false, batchnorm=false)
@@ -42,17 +48,20 @@ function LinMod(n_inputs, n_outputs; bias=false, batchnorm=false)
     if batchnorm
         push!(layers, BatchNormMod(Int(n_outputs)))
     end
-    return LinMod(Flux.Chain(layers...) |> gpu, n_inputs, nothing)
+    return LinMod(Flux.Chain(layers...) |> gpu, n_inputs,
+                nothing, nothing, nothing)
 end
 
 Flux.@functor LinMod
 (m::LinMod)(x) = m.classifier(x)
 
-struct Relu
+mutable struct Relu
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
-Relu() = Relu(nothing)
+Relu() = Relu(nothing, nothing, nothing)
 
 Flux.@functor Relu
 (m::Relu)(x) = Flux.relu.(x)
@@ -83,27 +92,31 @@ struct LeNet{F, C}
     classifier::C
 end
 
-struct ConvMod{C}
+mutable struct ConvMod{C}
     classifier::C
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
 ConvMod(size, in, out, bias) = ConvMod(
     Flux.Conv(size, in => out; bias=bias),
-    nothing
+    nothing, nothing, nothing
 )
 
 Flux.@functor ConvMod
 (m::ConvMod)(x) = m.classifier(x)
 
-struct MaxPoolMod{C}
+mutable struct MaxPoolMod{C}
     classifier::C
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
 MaxPoolMod(size) = MaxPoolMod(
     Flux.MaxPool(size),
-    nothing
+    nothing, nothing, nothing
 )
 
 Flux.@functor MaxPoolMod
@@ -141,11 +154,13 @@ function (m::LeNet)(x)
     return m.classifier(interm)
 end
 
-struct Flatten
+mutable struct Flatten
     has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
 end
 
-Flatten() = Flatten(nothing)
+Flatten() = Flatten(nothing, nothing, nothing)
 
 Flux.@functor Flatten
 (m::Flatten)(x) = reshape(x, :, size(x, ndims(x)))
