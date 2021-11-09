@@ -187,4 +187,16 @@ function test(model, data_loader; criterion=Flux.Losses.logitcrossentropy, label
     return accuracy
 end
 
+mutable struct Chain{C}
+    chain::C
+    has_codes::Union{Bool, Nothing}
+    optimizer::Union{Any, Nothing}
+    scheduler::Union{Any, Nothing}
+end
+
+Chain(c) = Chain(Flux.Chain(c...), nothing, nothing, nothing)
+
+Flux.@functor Chain
+(m::Chain)(x) = m.chain(x)
+
 end

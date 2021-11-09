@@ -3,7 +3,7 @@ using ArgParse
 using Printf: @printf
 
 include("utils/utils.jl")
-include("models.jl")
+# include("models.jl")
 include("altmin.jl")
 
 function parse_commandline()
@@ -165,6 +165,7 @@ function main()
                 loss((x, y)) 
             end
             Flux.Optimise.update!(optimizer, params(model), gs)
+            ouputs, codes = Altmin.get_codes(model, x)
 
             # (2) Update codes
         end
