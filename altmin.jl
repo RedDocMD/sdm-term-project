@@ -45,10 +45,10 @@ function get_mods(model, optimizer, scheduler)
     for m in Iterators.flatten((model.features_vec, [Models.Flatten()], model.classifier_vec))
         if m.has_codes !== nothing && m.has_codes
             nmod = insert_mod!(model_mods, nmod, false)
-            push!(lmod, m)
+            push!(lmod, m |> gpu)
         else
             lmod = insert_mod!(model_mods, lmod, true)
-            push!(nmod, m)
+            push!(nmod, m |> gpu)
         end
     end
 
@@ -84,11 +84,10 @@ end
 
 function insert_mod!(model_mods, mods, has_codes)
     if length(mods) == 1
-        push!(model_mods, mods[1])
+        push!(model_mods, mods[1] |> gpu)
         model_mods[end].has_codes = has_codes
     elseif length(mods) > 1
-        # append!(model_mods, mods)
-        push!(model_mods, Models.Chain(mods))
+        push!(model_mods, Models.Chain(mods) |> gpu)
         model_mods[end].has_codes = has_codes
     end
     return []
@@ -96,7 +95,7 @@ end
 
 function get_codes(model, inputs)
     if model.n_inputs !== nothing
-        x = reshape(inputs, :, Int(model.n_inputs))
+        x = reshape(inputs, Int(model.n_inputs), :)
     else
         x = inputs
     end
