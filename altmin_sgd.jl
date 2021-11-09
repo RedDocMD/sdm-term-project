@@ -3,7 +3,6 @@ using ArgParse
 using Printf: @printf
 
 include("utils/utils.jl")
-# include("models.jl")
 include("altmin.jl")
 
 function parse_commandline()
@@ -154,20 +153,17 @@ function main()
     # Specially handle binary model?
 
     # Initial mu and increment after every mini-batch
-    mu = args[:mu]
-    mu_max = 10 * args[:mu]
+    μ = args[:mu]
+    μ_max = 10 * args[:mu]
 
     for epoch = 1:args[:epochs]
-        @printf "Epoch %d of %d, μ = %.4f, lr_out = %f\n" epoch args[:epochs] mu scheduler(epoch)
+        @printf "Epoch %d of %d, μ = %.4f, lr_out = %f\n" epoch args[:epochs] μ scheduler(epoch)
         for (batchidx, (x, y)) in enumerate(trainloader)
             # (1) Forward
-            gs = gradient(params(model)) do 
-                loss((x, y)) 
-            end
-            Flux.Optimise.update!(optimizer, params(model), gs)
-            ouputs, codes = Altmin.get_codes(model, x)
+            outputs, codes = Altmin.get_codes(model, x)
 
             # (2) Update codes
+            codes = Altmin.update_codes(codes, model, y, loss, μ, args[:lambda_c], args[:n_iter_codes], args[:lr_codes])
         end
     end
 end

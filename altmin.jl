@@ -8,11 +8,11 @@ using Statistics: mean
 using Flux: gpu
 import Main.Models
 
-function compute_code_loss(codes, nmod, lin, loss_fn, codes_target, mu, lambda_c)
+function compute_code_loss(codes, nmod, lin, loss_fn, codes_target, μ, λ_c)
     output = lin(nmod(codes))
-    loss = (1 / mu) * loss_fn(output) + Flux.mse(codes_target, output)
+    loss = (1 / μ) * loss_fn(output) + Flux.mse(codes_target, output)
     if lambda_c > 0.0
-        loss += (lambda_c / mu) * mean(abs.(codes))
+        loss += (λ_c / μ) * mean(abs.(codes))
     end
     return loss
 end
@@ -109,5 +109,50 @@ function get_codes(model, inputs)
     end
     return x, codes
 end
+
+function update_codes(codes, model, targets, criterion, μ, λ_c, n_iter, lr)
+    model_mods = model.model_mods
+
+    id_codes = [i for (i, m) in Iterators.enumerate(model_mods) if m.has_codes !== nothing && m.has_codes]
+    for l = 0:(length(codes) - 1)
+        idx = id_codes[end - l]
+
+        optimizer = Flux.Optimise.Nesterov(lr, 0.9)
+        codes_initial = copy(codes[end - l])
+
+        if (idx + 1) ∈ id_codes
+            nmod = identity
+            lin = model_mods[idx + 1]
+        else
+            if idx + 1 <= length(model_mods)
+                nmod = model_mods[idx + 1]
+            else
+                nmod = identity
+            end
+            if idx + 2 <= length(model_mods)
+                lin = model_mods[idx + 2]
+            else
+                lin = identity
+            end
+        end
+
+        criterion_loss(x) = criterion((x, targets))
+        mse_loss(x) = μ * Flux.Losses.mse(x, codes[end - l + 1])
+
+        if l == 0
+            loss_fn = criterion_loss
+        else
+            loss_fn = mse_loss
+        end
+
+        for it = 1:n_iter
+            gs = Flux.gradient([codes[end - l]], 
+                    compute_code_loss(codes[end - l], nmod, lin, loss_fn, codes_initial, μ, λ_c))
+            Flux.Optimise.update!(optimizer, [codes[end - l]], gs)
+        end
+    end
+
+    return codes
+end 
 
 end
