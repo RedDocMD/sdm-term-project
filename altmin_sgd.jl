@@ -1,6 +1,6 @@
 using Flux
 using ArgParse
-using Printf: @printf
+using Printf: @printf, @sprintf
 
 include("utils/utils.jl")
 include("altmin.jl")
@@ -144,6 +144,7 @@ function main()
     # Multi-GPU?
 
     loss((x, y)) = Flux.Losses.logitcrossentropy(x, y)
+    model_loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
     optimizer = Flux.Optimise.ADAM(args[:lr_weights])
     scheduler(epoch) = args[:lr_weights] / 2^(epoch ÷ args[:lr_half_epochs])
 
@@ -156,16 +157,44 @@ function main()
     μ = args[:mu]
     μ_max = 10 * args[:mu]
 
+    perf = Utils.Performance()
+
     for epoch = 1:args[:epochs]
         @printf "Epoch %d of %d, μ = %.4f, lr_out = %f\n" epoch args[:epochs] μ scheduler(epoch)
         for (batchidx, (x, y)) in enumerate(trainloader)
+            train_loss = model_loss((x, y))
+
             # (1) Forward
             outputs, codes = Altmin.get_codes(model, x)
 
             # (2) Update codes
             codes = Altmin.update_codes(codes, model, y, loss, μ, args[:lambda_c], args[:n_iter_codes], args[:lr_codes])
+
+            # (3) Update weights
+
+            # Print to terminal
+
+            if epoch == 1 && args[:log_first_epoch]
+                push!(perf.first_epoch, Models.test(model, testloader, label=" - Test"))
+            end
+
+            if (batchidx - 1) % args[:log_interval] == 0
+                train_loss_str = @sprintf "%.6f" train_loss
+                println(" Train Epoch $epoch, Minibatch $batchidx: Train-loss = $train_loss_str")
+            end
+
+            if args[:save_interval] > 0 && (batchidx - 1) % args[:save_interval] == 0 && batchidx > 1
+                acc = Models.test(model, test_loader, label=" - Test")
+                push!(perf.te_vs_iter, acc)
+            end
         end
+        # Scheduler step?
+
+        push!(perf.tr, Models.test(model, trainloader, label="Training"))
+        push!(perf.te, Models.test(model, testloader, label="Test"))
     end
+
+    # Save data?
 end
 
 main()
