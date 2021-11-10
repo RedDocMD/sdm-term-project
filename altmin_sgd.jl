@@ -160,7 +160,10 @@ function main()
     perf = Utils.Performance()
 
     for epoch = 1:args[:epochs]
+        Altmin.scheduler_step(model, epoch)
+
         @printf "Epoch %d of %d, μ = %.4f, lr_out = %f\n" epoch args[:epochs] μ scheduler(epoch)
+
         for (batchidx, (x, y)) in enumerate(trainloader)
             train_loss = model_loss((x, y))
 
@@ -174,8 +177,10 @@ function main()
             Altmin.update_last_layer(model.model_mods[end], codes[end], 
                     y, loss, args[:n_iter_weights])
 
-            # Print to terminal
+            Altmin.update_hidden_weights_adam(model, x, codes, 
+                    args[:lambda_w], args[:n_iter_weights])
 
+            # Print to terminal
             if epoch == 1 && args[:log_first_epoch]
                 push!(perf.first_epoch, Models.test(model, testloader, label=" - Test"))
             end
@@ -189,8 +194,11 @@ function main()
                 acc = Models.test(model, test_loader, label=" - Test")
                 push!(perf.te_vs_iter, acc)
             end
+
+            if μ < μ_max
+                μ += args[:d_mu]
+            end
         end
-        # Scheduler step?
 
         push!(perf.tr, Models.test(model, trainloader, label="Training"))
         push!(perf.te, Models.test(model, testloader, label="Test"))

@@ -168,4 +168,45 @@ function update_last_layer(mod_out, inputs, targets, criterion, n_iter)
     end
 end
 
+function update_hidden_weights_adam(model, inputs, codes, λ_w, n_iter)
+    model_mods = model.model_mods
+
+    id_codes = [i for (i, m) in Iterators.enumerate(model_mods) 
+                if m.has_codes !== nothing && m.has_codes]
+
+    if model.n_inputs !== nothing
+        x = reshape(inputs, Int(model.n_inputs), :)
+    else
+        x = inputs
+    end
+
+    cins = [x]
+    append!(cins, codes[1:end-1])
+    for (idx, c_in, c_out) in Iterators.zip(id_codes, cins, codes)
+        lin = model_mods[idx]
+        if idx >= 2 && (idx - 1) ∉ id_codes
+            nmod = model_mods[idx - 1]
+        else
+            nmod = identity
+        end
+
+        for it = 1:n_iter
+            gs = Flux.gradient(Flux.params(lin)) do
+                Flux.mse(lin(nmod(c_in)), copy(c_out))
+                # Ignore λ_w
+            end
+            Flux.Optimise.update!(lin.optimizer, Flux.params(lin), gs)
+        end
+    end
+end
+
+function scheduler_step(model, epoch)
+    model_mods = model.model_mods
+    for m in model_mods
+        if :scheduler ∈ fieldnames(typeof(m)) && m.scheduler !== nothing
+            m.optimizer.eta = m.scheduler(epoch)
+        end
+    end
+end
+
 end
