@@ -143,7 +143,7 @@ function main()
 
     # Multi-GPU?
 
-    loss((x, y)) = Flux.Losses.logitcrossentropy(model(x), y)
+    loss((x, y)) = Flux.Losses.logitcrossentropy(x, y)
     optimizer = Flux.Optimise.ADAM(args[:lr_weights])
     scheduler(epoch) = args[:lr_weights] / 2^(epoch ÷ args[:lr_half_epochs])
 

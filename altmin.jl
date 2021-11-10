@@ -7,11 +7,12 @@ import Flux
 using Statistics: mean
 using Flux: gpu
 import Main.Models
+using CUDA
 
 function compute_code_loss(codes, nmod, lin, loss_fn, codes_target, μ, λ_c)
     output = lin(nmod(codes))
-    loss = (1 / μ) * loss_fn(output) + Flux.mse(codes_target, output)
-    if lambda_c > 0.0
+    loss = (1 / μ) * loss_fn(output) + Flux.mse(codes, codes_target)
+    if λ_c > 0.0
         loss += (λ_c / μ) * mean(abs.(codes))
     end
     return loss
@@ -113,7 +114,8 @@ end
 function update_codes(codes, model, targets, criterion, μ, λ_c, n_iter, lr)
     model_mods = model.model_mods
 
-    id_codes = [i for (i, m) in Iterators.enumerate(model_mods) if m.has_codes !== nothing && m.has_codes]
+    id_codes = [i for (i, m) in Iterators.enumerate(model_mods) 
+                if m.has_codes !== nothing && m.has_codes]
     for l = 0:(length(codes) - 1)
         idx = id_codes[end - l]
 
@@ -146,9 +148,10 @@ function update_codes(codes, model, targets, criterion, μ, λ_c, n_iter, lr)
         end
 
         for it = 1:n_iter
-            gs = Flux.gradient([codes[end - l]], 
-                    compute_code_loss(codes[end - l], nmod, lin, loss_fn, codes_initial, μ, λ_c))
-            Flux.Optimise.update!(optimizer, [codes[end - l]], gs)
+            gs = Flux.gradient(Flux.params(codes[end - l])) do
+                compute_code_loss(codes[end - l], nmod, lin, loss_fn, codes_initial, μ, λ_c)
+            end
+            Flux.Optimise.update!(optimizer, Flux.params(codes[end - l]), gs)
         end
     end
 
