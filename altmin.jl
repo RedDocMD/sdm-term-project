@@ -158,4 +158,14 @@ function update_codes(codes, model, targets, criterion, μ, λ_c, n_iter, lr)
     return codes
 end 
 
+function update_last_layer(mod_out, inputs, targets, criterion, n_iter)
+    for it = 1:n_iter
+        outputs = mod_out(inputs)
+        gs = Flux.gradient(Flux.params(mod_out)) do
+            criterion((outputs, targets)) 
+        end
+        Flux.Optimise.update!(mod_out.optimizer, Flux.params(mod_out), gs)
+    end
+end
+
 end

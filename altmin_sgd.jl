@@ -171,6 +171,8 @@ function main()
             codes = Altmin.update_codes(codes, model, y, loss, μ, args[:lambda_c], args[:n_iter_codes], args[:lr_codes])
 
             # (3) Update weights
+            Altmin.update_last_layer(model.model_mods[end], codes[end], 
+                    y, loss, args[:n_iter_weights])
 
             # Print to terminal
 
