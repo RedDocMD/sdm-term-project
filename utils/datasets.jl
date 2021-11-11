@@ -33,8 +33,8 @@ function load_dataset(;namedataset="mnist", batch_size=200, data_aug=false, conv
         train_x, train_y = CIFAR10.traindata(Float32)
         test_x, test_y = CIFAR10.testdata(Float32)
 
-        mean, dev = [Float32(0.4914), Float32(0.4822), Float32(0.4465)], [Float32(0.2023), Float32(0.1994), Float32(0.2010)]
-
+        mean, dev = [Float32(0.4914), Float32(0.4822), Float32(0.4465)], [Float32(0.2470), Float32(0.2435), Float32(0.2616)]
+        #std dev value are different according to https://stackoverflow.com/questions/66678052/how-to-calculate-the-mean-and-the-std-of-cifar10-data
         # Transform test
         normalize!(test_x, mean, dev)
         if !conv_net
