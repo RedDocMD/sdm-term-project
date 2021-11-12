@@ -119,39 +119,45 @@ function main()
     lr_sched = Stateful(Step(args[:lr], args[:lr_decay], 1))
 
     perf = Utils.Performance()
+    times = []
 
     # Train, IG
     for epoch in 1:args[:epochs]
         println("\nEpoch $epoch of $(args[:epochs])")
-        optimiser.eta = next!(lr_sched)
-        for (batchidx, (x, y)) in enumerate(trainloader)
-            train_loss = loss((x, y))
+        stat = @timed begin
+            optimiser.eta = next!(lr_sched)
+            for (batchidx, (x, y)) in enumerate(trainloader)
+                train_loss = loss((x, y))
 
-            gs = gradient(params(model)) do 
-                loss((x, y)) 
-            end
-            Flux.Optimise.update!(optimiser, params(model), gs)
+                gs = gradient(params(model)) do 
+                    loss((x, y)) 
+                end
+                Flux.Optimise.update!(optimiser, params(model), gs)
 
-            if epoch == 1 && args[:log_first_epoch]
-                push!(perf.first_epoch, Models.test(model, testloader, label=" - Test"))
-            end
+                if epoch == 1 && args[:log_first_epoch]
+                    push!(perf.first_epoch, Models.test(model, testloader, label=" - Test"))
+                end
 
-            if (batchidx - 1) % args[:log_interval] == 0
-                train_loss_str = @sprintf "%.6f" train_loss
-                println(" Train Epoch $epoch, Minibatch $batchidx: Train-loss = $train_loss_str")
-            end
+                if (batchidx - 1) % args[:log_interval] == 0
+                    train_loss_str = @sprintf "%.6f" train_loss
+                    println(" Train Epoch $epoch, Minibatch $batchidx: Train-loss = $train_loss_str")
+                end
 
-            if args[:save_interval] > 0 && (batchidx - 1) % args[:save_interval] == 0 && batchidx > 1
-                acc = Models.test(model, test_loader, label=" - Test")
-                push!(perf.te_vs_iter, acc)
+                if args[:save_interval] > 0 && (batchidx - 1) % args[:save_interval] == 0 && batchidx > 1
+                    acc = Models.test(model, test_loader, label=" - Test")
+                    push!(perf.te_vs_iter, acc)
+                end
             end
         end
+        push!(times, stat.time)
         push!(perf.tr, Models.test(model, trainloader, label="Training"))
         push!(perf.te, Models.test(model, testloader, label="Test"))
     end
 
     println("\n - Training performance after each epoch: $(perf.tr)")
     println(" - Test performance after each epoch: $(perf.te)")
+
+    println(times)
 
     out_path = joinpath(pwd(), "outputs", file_name)
     serialize(out_path, perf)
