@@ -34,7 +34,7 @@ struct AltMinModel{C}
 end
 
 Flux.@functor AltMinModel
-(m::AltMinModel)(x) = m.model(x)
+(m::AltMinModel)(x) = Flux.Chain(m.model_mods...)(x)
 
 function get_mods(model, optimizer, scheduler)
     mark_code_mods!(model)
